@@ -70,15 +70,20 @@ namespace Eduzo.Games.DetectiveGame.UI
             isDone = true;
 #else
             Type galleryType = Type.GetType("NativeGallery, NativeGallery");
-            if (galleryType == null) galleryType = Type.GetType("NativeGallery, Assembly-CSharp"); // Try common assembly
+            if (galleryType == null) galleryType = Type.GetType("NativeGallery, Assembly-CSharp"); 
+            if (galleryType == null) galleryType = Type.GetType("NativeGallery, NativeGallery.Runtime"); // UPM assembly name
 
             if (galleryType == null)
             {
-                StartCoroutine(ShowFeedback("NativeGallery plugin missing for mobile!", Color.red));
+                string errorMsg = "NativeGallery plugin missing! Please see NativeGalleryInstallation.md in project root.";
+                Debug.LogError(errorMsg);
+                StartCoroutine(ShowFeedback("Plugin Missing!", Color.red));
                 yield break;
             }
 
-            var delegateType = galleryType.GetNestedType("GetImageDelegate");
+            var delegateType = galleryType.GetNestedType("MediaPickCallback");
+            if (delegateType == null) delegateType = galleryType.GetNestedType("GetImageDelegate"); // Fallback for older versions
+
             Action<string> cb = (path) => { pickedPath = path; isDone = true; };
             Delegate callback = Delegate.CreateDelegate(delegateType, cb.Target, cb.Method);
 
@@ -129,6 +134,12 @@ namespace Eduzo.Games.DetectiveGame.UI
             if (string.IsNullOrEmpty(questionInput.text) || string.IsNullOrEmpty(correctInput.text) || string.IsNullOrEmpty(wrongInput.text))
             {
                 StartCoroutine(ShowFeedback("Please fill all fields!", Color.red));
+                return;
+            }
+
+            if (referenceSprite == defaultReferenceSprite || string.IsNullOrEmpty(pickedReferenceImageSavedPath))
+            {
+                StartCoroutine(ShowFeedback("Please upload an image!", Color.red));
                 return;
             }
 

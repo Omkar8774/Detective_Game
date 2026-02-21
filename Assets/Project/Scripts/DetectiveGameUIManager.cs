@@ -48,6 +48,7 @@ namespace Eduzo.Games.DetectiveGame.UI
         [Tooltip("Assign sets for Option 1 and Option 2")]
         public OptionFeedbackVFX[] testOptionVFX;
         public ParticleSystem[] nextQuestionSuccessVFX;
+        public ParticleSystem[] nextQuestionFailureVFX;
 
         [Header("Win Panel UI")]
         public TextMeshProUGUI finalScoreText;
@@ -57,6 +58,7 @@ namespace Eduzo.Games.DetectiveGame.UI
         public GameObject winImage;
         public GameObject loseImage;
         public ParticleSystem winEffects;
+        public ParticleSystem loseEffects;
         public GameObject blockPanel;
 
         private bool isTestModeActive;
@@ -215,6 +217,21 @@ namespace Eduzo.Games.DetectiveGame.UI
             yield return new WaitForSeconds(2.0f);
         }
 
+        public IEnumerator PlayNextQuestionFailureVFXRoutine()
+        {
+            if (nextQuestionFailureVFX == null || nextQuestionFailureVFX.Length == 0) yield break;
+
+            foreach (var ps in nextQuestionFailureVFX)
+            {
+                if (ps == null) continue;
+                ps.gameObject.SetActive(true);
+                ps.Play();
+                StartCoroutine(StopParticleDelayed(ps, 2.0f));
+            }
+
+            yield return new WaitForSeconds(2.0f);
+        }
+
         private IEnumerator StopParticleDelayed(ParticleSystem ps, float delay)
         {
             yield return new WaitForSeconds(delay);
@@ -303,6 +320,19 @@ namespace Eduzo.Games.DetectiveGame.UI
             return 0;
         }
 
+        public void SetOptionsInteractable(bool state)
+        {
+            TextMeshProUGUI[] activeOptions = isTestModeActive ? testOptions : practiceOptions;
+            if (activeOptions == null) return;
+
+            foreach (var opt in activeOptions)
+            {
+                if (opt == null) continue;
+                var btn = opt.GetComponentInParent<DetectiveGameOptionButton>();
+                if (btn != null) btn.enabled = state;
+            }
+        }
+
         public IEnumerator ShowWinPanel(float score, int correct, int total, bool completed, GameMode mode)
         {
             bool isWin = completed && score >= 30f;
@@ -315,6 +345,7 @@ namespace Eduzo.Games.DetectiveGame.UI
             }
             else
             {
+                if (loseEffects != null) loseEffects.Play();
                 DetectiveGameSoundManager.instance?.PlayLose();
             }
 

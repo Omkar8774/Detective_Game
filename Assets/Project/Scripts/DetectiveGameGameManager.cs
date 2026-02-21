@@ -70,7 +70,8 @@ namespace Eduzo.Games.DetectiveGame
                 return;
             }
 
-            uiManager.DisplayQuestion(currentQuestion);
+            uiManager?.SetOptionsInteractable(true);
+            uiManager?.DisplayQuestion(currentQuestion);
             isInputLocked = false;
         }
 
@@ -78,19 +79,24 @@ namespace Eduzo.Games.DetectiveGame
         {
             if (isInputLocked) return;
 
+            isInputLocked = true;
+            uiManager?.SetOptionsInteractable(false);
             DetectiveGameSoundManager.instance?.PlayButtonClick();
 
             bool isCorrect = (index == correctIndex);
-            totalAnswered++;
+            
+            // In Practice mode, we only count the "answered" state when they get it right
+            // or if it's the first time they answer in Test mode.
+            bool shouldAdvance = isCorrect || mode == GameMode.Test;
+            if (shouldAdvance) totalAnswered++;
 
             recorder?.RecordResponse(currentQuestion?.prompt, uiManager?.GetOptionText(index) ?? "", currentQuestion?.correctAnswer ?? "", isCorrect, Time.time.ToString());
 
+            bool isGameOver = false;
             if (isCorrect)
             {
-                isInputLocked = true;
                 correctCount++;
                 DetectiveGameSoundManager.instance?.PlayCorrect();
-                StartCoroutine(PostAnswerRoutine(index, true));
             }
             else
             {
@@ -99,51 +105,64 @@ namespace Eduzo.Games.DetectiveGame
 
                 if (mode == GameMode.Test)
                 {
-                    isInputLocked = true;
                     lives?.Decrement();
                     if (lives != null && lives.IsDead())
                     {
-                        EndGame(false);
-                        return;
+                        isGameOver = true;
                     }
                 }
-                
-                StartCoroutine(PlayWrongStayRoutine(index));
             }
+
+            StartCoroutine(PostAnswerRoutine(index, isCorrect, isGameOver, shouldAdvance));
         }
 
-        private IEnumerator PlayWrongStayRoutine(int index)
-        {
-            isInputLocked = true;
-            if (uiManager != null)
-                yield return StartCoroutine(uiManager.PlayFeedbackRoutine(index, false));
-            isInputLocked = false;
-        }
-
-        private IEnumerator PostAnswerRoutine(int index, bool wasCorrect)
+        private IEnumerator PostAnswerRoutine(int index, bool wasCorrect, bool isGameOver, bool shouldAdvance)
         {
             if (uiManager != null)
             {
+                yield return StartCoroutine(uiManager.PlayFeedbackRoutine(index, wasCorrect));
+                
                 bool hasNext = questionManager != null && questionManager.HasMoreQuestions();
 
-                if (hasNext)
+                // Determine if we are about to show the final win/lose panel
+                bool isAdvancingToPanel = isGameOver || (shouldAdvance && !hasNext);
+
+                // Play general VFX if we are NOT showing the final panel yet
+                if (!isAdvancingToPanel)
                 {
-                    yield return StartCoroutine(uiManager.PlayFeedbackRoutine(index, wasCorrect));
-                    if (wasCorrect) yield return StartCoroutine(uiManager.PlayNextQuestionSuccessVFXRoutine());
+                    if (wasCorrect) 
+                        yield return StartCoroutine(uiManager.PlayNextQuestionSuccessVFXRoutine());
+                    else
+                        yield return StartCoroutine(uiManager.PlayNextQuestionFailureVFXRoutine());
+                }
+                else if (!shouldAdvance)
+                {
+                    // If staying on question (Practice mode wrong answer), brief delay for feel
+                    yield return new WaitForSeconds(0.2f);
                 }
                 else
                 {
-                    StartCoroutine(uiManager.PlayFeedbackRoutine(index, wasCorrect));
-                    yield return new WaitForSeconds(0.1f);
+                    yield return new WaitForSeconds(0.5f); // Tiny delay for feel before win panel
                 }
             }
             else
             {
-                yield return new WaitForSeconds(0.5f);
+                yield return new WaitForSeconds(2.0f);
             }
 
-            isInputLocked = false;
-            LoadNextRound();
+            if (shouldAdvance)
+            {
+                if (isGameOver)
+                    EndGame(false);
+                else
+                    LoadNextRound();
+            }
+            else
+            {
+                // In Practice mode, if wrong, unlock for another try
+                isInputLocked = false;
+                uiManager?.SetOptionsInteractable(true);
+            }
         }
 
         public void HandleTimeUp()

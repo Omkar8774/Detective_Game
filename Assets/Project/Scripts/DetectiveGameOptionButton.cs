@@ -20,6 +20,8 @@ namespace Eduzo.Games.DetectiveGame
 
         public void OnPointerClick(PointerEventData eventData)
         {
+            if (!enabled) return;
+
             if (gameManager != null)
             {
                 gameManager.OnOptionSelected(optionIndex);

@@ -32,6 +32,7 @@ namespace Eduzo.Games.DetectiveGame.UI
         private string pickedReferenceImageSavedPath;
 
         private void OnEnable() => ClearFields();
+        private void OnDisable() => ClearFields();
 
         private void Start()
         {
@@ -172,15 +173,22 @@ namespace Eduzo.Games.DetectiveGame.UI
 
         public void ClearFields()
         {
-            if (questionInput != null) questionInput.text = "";
-            if (correctInput != null) correctInput.text = "";
-            if (wrongInput != null) wrongInput.text = "";
+            questionInput.text = "";    
+            correctInput.text = "";
+            wrongInput.text = "";
 
             pickedReferenceImageSavedPath = null;
             referenceSprite = defaultReferenceSprite;
 
-            if (referenceImagePreview != null) referenceImagePreview.sprite = defaultReferenceSprite;
+            if (referenceImagePreview != null)
+            {
+                referenceImagePreview.sprite = defaultReferenceSprite;
+                referenceImagePreview.preserveAspect = true;
+                referenceImagePreview.gameObject.SetActive(defaultReferenceSprite != null);
+            }
+
             if (submitButton != null) submitButton.interactable = false;
+            if (feedbackText != null) feedbackText.text = "";
         }
     }
 }

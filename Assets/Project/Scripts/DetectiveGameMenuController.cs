@@ -45,6 +45,9 @@ namespace Eduzo.Games.DetectiveGame
         {
             uiManager.homePanel.SetActive(false);
             uiManager.formPanel.SetActive(true);
+
+            var formManager = Object.FindFirstObjectByType<DetectiveGameFormManager>(FindObjectsInactive.Include);
+            if (formManager != null) formManager.ClearFields();
         }
 
         public void StartGameFromForm()
